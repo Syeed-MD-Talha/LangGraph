@@ -1,18 +1,27 @@
+import os 
 import sqlite3
+
+from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite import SqliteSaver
-from typing import Annotated, TypedDict
-from langchain_core.messages import BaseMessage, HumanMessage
-from langgraph.graph import StateGraph
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, MessagesState
+from langchain.chat_models import init_chat_model
+
+# load dotenv 
+load_dotenv()
+
+# declare llm 
+llm = init_chat_model(model="gemini-2.5-flash-lite", model_provider="google_genai", api_key=os.getenv("GEMINI_API_KEY"))
 
 # Create connection manually
 conn = sqlite3.connect("talha.db", check_same_thread=False)
 memory = SqliteSaver(conn)
 
-def chatnode(state: State):
-    return {"messages": [gemini.invoke(state["messages"])]}
+def chatnode(state: MessagesState):
+    return {"messages": [llm.invoke(state["messages"])]}
 
 # Rest of your code remains the same
-graph = StateGraph(State).add_node(chatnode).set_entry_point("chatnode").compile(checkpointer=memory)
+graph = StateGraph(MessagesState).add_node(chatnode).set_entry_point("chatnode").compile(checkpointer=memory)
 config = {"configurable": {"thread_id": "2"}}
 
 while True:
